@@ -1,5 +1,8 @@
 package org.skypro.examQuestions.service;
 
+import org.skypro.examQuestions.exception.DuplicateQuestionException;
+import org.skypro.examQuestions.exception.NullQuestionException;
+import org.skypro.examQuestions.exception.QuestionNotFoundException;
 import org.skypro.examQuestions.model.Question;
 
 import java.util.*;
@@ -10,44 +13,33 @@ public class JavaQuestionService implements QuestionService {
     private final Random random = new Random();
 
     @Override
-    public Question add(String question, String answer) {
-        Question newQuestion = new Question(question, answer);
-        questions.add(newQuestion);
-        return newQuestion;
-    }
-
-    @Override
     public Question add(Question question) {
+        if (question == null || question.getQuestion() == null || question.getAnswer() == null) {
+            throw new NullQuestionException("Вопрос не может быть null.");
+        }
+        boolean exists = questions.stream()
+                .anyMatch(q -> q.getQuestion().equalsIgnoreCase(question.getQuestion()) &&
+                        q.getAnswer().equals(question.getAnswer())); // Учитываем и ответ при дублировании
+        if (exists) {
+            throw new DuplicateQuestionException("Такой вопрос уже существует.");
+        }
         questions.add(question);
         return question;
     }
 
     @Override
-    public Question remove(String question, String answer) {
-        Question questionToRemove = new Question(question, answer);
-        if (questions.remove(questionToRemove)) {
-            return questionToRemove;
-        }
-        return null;
+    public Question find(String questionText) {
+        return questions.stream()
+                .filter(q -> q.getQuestion().equalsIgnoreCase(questionText))
+                .findFirst()
+                .orElseThrow(() -> new QuestionNotFoundException("Вопрос с текстом '" + questionText + "' не найден."));
     }
 
     @Override
-    public Question remove(Question question) {
-        if (questions.remove(question)) {
-            return question;
-        }
-        return null;
-    }
-
-    @Override
-    public Question find(String question, String answer) {
-        Question questionToFind = new Question(question, answer);
-        for (Question q : questions) {
-            if (q.equals(questionToFind)) {
-                return q;
-            }
-        }
-        return null;
+    public Question remove(String questionText) {
+        Question questionToRemove = find(questionText); // Используем метод find для поиска
+        questions.remove(questionToRemove); // Удаляем найденный вопрос
+        return questionToRemove;
     }
 
     @Override
@@ -56,14 +48,12 @@ public class JavaQuestionService implements QuestionService {
             return null;
         }
         int randomIndex = random.nextInt(questions.size());
-        int currentIndex = 0;
-        for (Question q : questions) {
-            if (currentIndex == randomIndex) {
-                return q;
-            }
-            currentIndex++;
+        Iterator<Question> iterator = questions.iterator();
+        Question randomQuestion = null;
+        for (int i = 0; i <= randomIndex; i++) {
+            randomQuestion = iterator.next();
         }
-        return null;
+        return randomQuestion;
     }
 
     @Override
